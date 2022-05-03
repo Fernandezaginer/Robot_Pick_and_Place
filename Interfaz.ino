@@ -69,6 +69,47 @@ class boton_t {
 };
 
 
+// Clase coordenadas
+class coordenadas {
+  public:
+    coordenadas() : x(RADIO_MIN), y(0.0), z(ALTURA_MAX), g(0.0) {}
+    float x;
+    float y;
+    float z;
+    bool g;
+
+    bool ver_si_ok() {
+      return (getR() <= RADIO_MAX && getR() >= RADIO_MIN && getA() <= ANGULO_MAX && getA() >= ANGULO_MIN && getZ() <= ALTURA_MAX && getZ() >= ALTURA_MIN);
+    }
+
+  private:
+    void convert_q_to_x(float radio, float angulo, float altura, boolean gripper) {
+      x = radio * cos(angulo);
+      y = radio * sin(angulo);
+      z = altura;
+      g = gripper;
+    }
+
+    float getR() {
+      return sqrt(x * x + y * y);
+    }
+    float getA() {
+      float aux = atan2(y, x);
+      if (aux < 0) {
+        aux += 180.0;
+      }
+      return aux;
+    }
+    float getZ() {
+      return z;
+    }
+};
+
+void tft_control_manual_print_xi(coordenadas cc);
+
+
+
+
 // Modo interfaz:
 enum modo_t {MENU, EMERGENCIA, MANUAL_Q, MANUAL_X, SECUENCIAS};
 modo_t mode = MENU;
@@ -134,7 +175,6 @@ const boton_t S(222, 292, 85, 155);
 
 void modo_menu() {
 
-  bool sececcionado = false;
   tft_menu();
   do {
 
@@ -170,26 +210,26 @@ void tft_menu() {
 
   // Imprimir botones en pantalla:
   tft.fillRoundRect(Q.x_min, Q.y_min, 70, 70, 5, GREEN);
-  tft.fillRoundRect(Q.x_min+5, Q.y_min+5, 60, 60, 4, WHITE);
-  tft_formato_de_texto(BLUE, 1, Q.x_min-5, Q.y_min-15);
+  tft.fillRoundRect(Q.x_min + 5, Q.y_min + 5, 60, 60, 4, WHITE);
+  tft_formato_de_texto(BLUE, 1, Q.x_min - 5, Q.y_min - 15);
   tft.print("Articulaciones:");
-  tft_formato_de_texto(BLACK, 2, Q.x_min+23, Q.y_min+25);
+  tft_formato_de_texto(BLACK, 2, Q.x_min + 23, Q.y_min + 25);
   tft.print("qi");
 
   tft.fillRoundRect(X.x_min, X.y_min, 70, 70, 5, GREEN);
-  tft.fillRoundRect(X.x_min+5, X.y_min+5, 60, 60, 5, WHITE);
-  tft_formato_de_texto(BLUE, 1, X.x_min+1, X.y_min-15);
+  tft.fillRoundRect(X.x_min + 5, X.y_min + 5, 60, 60, 5, WHITE);
+  tft_formato_de_texto(BLUE, 1, X.x_min + 1, X.y_min - 15);
   tft.print("Coordenadas:");
-  tft_formato_de_texto(BLACK, 2, X.x_min+23, X.y_min+25);
+  tft_formato_de_texto(BLACK, 2, X.x_min + 23, X.y_min + 25);
   tft.print("xi");
-  
+
   tft.fillRoundRect(S.x_min, S.y_min, 70, 70, 5, GREEN);
-  tft.fillRoundRect(S.x_min+5, S.y_min+5, 60, 60, 5, WHITE);
-  tft_formato_de_texto(BLUE, 1, S.x_min+3, S.y_min-15);
+  tft.fillRoundRect(S.x_min + 5, S.y_min + 5, 60, 60, 5, WHITE);
+  tft_formato_de_texto(BLUE, 1, S.x_min + 3, S.y_min - 15);
   tft.print("Secuencias:");
-  tft_formato_de_texto(BLACK, 2, S.x_min+23, S.y_min+25);
+  tft_formato_de_texto(BLACK, 2, S.x_min + 23, S.y_min + 25);
   tft.print("si");
-  
+
 }
 
 
@@ -211,31 +251,26 @@ void tft_menu() {
 
 
 
-struct coordenadas{
-  float x;
-  float y;
-  float z;
-  bool g;
-
-  void convert_q_to_x(float radio, float angulo, float altura, boolean gripper){
-    
-  }
-  void send(){
-    
-  }
-
-};
-
-
-
-
-
-
-
 void modo_manual_x() {
 
+  tft_control_manual_xi();
+  coordenadas c;
+  tft_control_manual_print_xi(c);
   do {
     //set_qi_manual();
+  } while (!salir && !emergencia);
+
+}
+
+
+
+
+void modo_manual_q() {
+
+  tft_control_manual_qi();
+  tft_control_manual_print_qi(radio, angulo, altura, gripper);
+  do {
+    set_qi_manual();
   } while (!salir && !emergencia);
 
 }
@@ -246,18 +281,6 @@ void modo_manual_x() {
 //------------------------------------------------------------------------
 //                                . . .
 //------------------------------------------------------------------------
-
-
-
-void modo_manual_q() {
-
-  tft_control_manual();
-  tft_control_manual_print_q(radio, angulo, altura, gripper);
-  do {
-    set_qi_manual();
-  } while (!salir && !emergencia);
-
-}
 
 
 void set_qi_manual() {
@@ -332,7 +355,7 @@ void set_qi_manual() {
     else {
       radio = radio + RADIO_INCREMENTO;
     }
-    tft_control_manual_print_q(radio, angulo, altura, gripper);
+    tft_control_manual_print_qi(radio, angulo, altura, gripper);
     mf[0] = 0;
   }
 
@@ -343,7 +366,7 @@ void set_qi_manual() {
     else {
       radio = radio - RADIO_INCREMENTO;
     }
-    tft_control_manual_print_q(radio, angulo, altura, gripper);
+    tft_control_manual_print_qi(radio, angulo, altura, gripper);
     mf[1] = 0;
   }
 
@@ -354,7 +377,7 @@ void set_qi_manual() {
     else {
       angulo = angulo + ANGULO_INCREMENTO;
     }
-    tft_control_manual_print_q(radio, angulo, altura, gripper);
+    tft_control_manual_print_qi(radio, angulo, altura, gripper);
     mf[2] = 0;
   }
 
@@ -365,7 +388,7 @@ void set_qi_manual() {
     else {
       angulo = angulo - ANGULO_INCREMENTO;
     }
-    tft_control_manual_print_q(radio, angulo, altura, gripper);
+    tft_control_manual_print_qi(radio, angulo, altura, gripper);
     mf[3] = 0;
   }
 
@@ -376,7 +399,7 @@ void set_qi_manual() {
     else {
       altura = altura + ALTURA_INCREMENTO;
     }
-    tft_control_manual_print_q(radio, angulo, altura, gripper);
+    tft_control_manual_print_qi(radio, angulo, altura, gripper);
     mf[4] = 0;
   }
 
@@ -387,7 +410,7 @@ void set_qi_manual() {
     else {
       altura = altura - ALTURA_INCREMENTO;
     }
-    tft_control_manual_print_q(radio, angulo, altura, gripper);
+    tft_control_manual_print_qi(radio, angulo, altura, gripper);
     mf[5] = 0;
   }
 
@@ -398,7 +421,7 @@ void set_qi_manual() {
     else {
       gripper = PLACE;
     }
-    tft_control_manual_print_q(radio, angulo, altura, gripper);
+    tft_control_manual_print_qi(radio, angulo, altura, gripper);
     mf[6] = 0;
   }
 
@@ -411,11 +434,11 @@ void set_qi_manual() {
 //------------------------------------------------------------------------
 
 
-void tft_control_manual() {
+void tft_control_manual_qi() {
   tft_clear();
   tft_print_boton_salir();
   tft_formato_de_texto(BLUE, 2, 10, 10);
-  tft.print("Control manual:");
+  tft.print("Control manual qi:");
 
   // Botones de interación
   tft_formato_de_texto(BLUE, 2, 180, 40);
@@ -441,7 +464,7 @@ void tft_control_manual() {
 }
 
 
-void tft_control_manual_print_q(float q1, float q2, float q3, boolean gripper) {
+void tft_control_manual_print_qi(float q1, float q2, float q3, boolean gripper) {
 
   tft.fillRoundRect(210, 62, 65, 25, 0, WHITE);
   tft_formato_de_texto(BLUE, 2, 210, 66);
@@ -473,6 +496,60 @@ void tft_control_manual_print_q(float q1, float q2, float q3, boolean gripper) {
 //------------------------------------------------------------------------
 
 
+void tft_control_manual_xi() {
+  tft_clear();
+  tft_print_boton_salir();
+  tft_formato_de_texto(BLUE, 2, 10, 10);
+  tft.print("Control manual xi:");
+
+  // Botones de interación
+  tft_formato_de_texto(BLUE, 2, 180, 40);
+  tft.print("X:");
+  tft_print_boton_qi(180, 60);
+  tft_formato_de_texto(BLUE, 2, 180, 90);
+  tft.print("Y:");
+  tft_print_boton_qi(180, 110);
+  tft_formato_de_texto(BLUE, 2, 180, 140);
+  tft.print("Z:");
+  tft_print_boton_qi(180, 160);
+  tft_formato_de_texto(BLUE, 2, 180, 190);
+  tft.print("Gripper:");
+
+  // Cajas separadoras:
+  tft.drawFastHLine(177, 37, 131, BLACK);
+  tft.drawFastHLine(177, 87, 131, BLACK);
+  tft.drawFastHLine(177, 137, 131, BLACK);
+  tft.drawFastHLine(177, 187, 131, BLACK);
+  tft.drawFastHLine(177, 237, 131, BLACK);
+  tft.drawFastVLine(177, 37, 200, BLACK);
+  tft.drawFastVLine(308, 37, 200, BLACK);
+}
+
+
+void tft_control_manual_print_xi(coordenadas cc) {
+
+  tft.fillRoundRect(210, 62, 65, 25, 0, WHITE);
+  tft_formato_de_texto(BLUE, 2, 210, 66);
+  tft.print(cc.x, 1);
+  tft.fillRoundRect(210, 112, 65, 25, 0, WHITE);
+  tft_formato_de_texto(BLUE, 2, 210, 116);
+  tft.print(cc.y, 1);
+  tft.fillRoundRect(210, 162, 65, 25, 0, WHITE);
+  tft_formato_de_texto(BLUE, 2, 210, 166);
+  tft.print(cc.z, 1);
+
+  if (cc.g == PICK) {
+    tft.fillRoundRect(180, 210, 125, 25, 3, RED);
+    tft_formato_de_texto(BLACK, 2, 220, 215);
+    tft.print("PICK");
+  }
+  if (cc.g == PLACE) {
+    tft.fillRoundRect(180, 210, 125, 25, 3, GREEN);
+    tft_formato_de_texto(BLACK, 2, 215, 215);
+    tft.print("PLACE");
+  }
+
+}
 
 
 
