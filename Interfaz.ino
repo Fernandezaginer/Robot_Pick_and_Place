@@ -48,65 +48,11 @@ Adafruit_GFX_Button on_btn, off_btn;
 float radio = 10.0;
 float angulo = 180.0;
 float altura = 20.0;
-enum modo_gripper {PLACE = 0, PICK = 1}; 
+enum modo_gripper {PLACE = 0, PICK = 1};
 bool gripper = PICK;
 
 
-void setup() {
-  Serial.begin(9600);
-  tft_init();
-  tft_parada_emergencia();
-  tft_control_manual();
-  tft_control_manual_print_q(radio, angulo, altura, gripper);
-}
-
-
-
-void loop() {
-
-  modo_manual();
-
-  // Y esperamos a que el usuario seleccione un jugador:
-  /*
-    int id = 0;
-    do {
-    int x, y;
-    while (se_presiona_pantalla(&x, &y) == 0);
-    while (se_presiona_pantalla(&x, &y) == 1);
-    if (boton_salir(x, y) == 1) {
-      k = 3;
-      ret = 0;
-      break;
-    }
-    delay(100);
-    if (x >= 20 && x <= 180 && y >= 50 && y <= (50 + num_jug * 20)) {
-      id = (y - 50) / 20;
-      break;
-    }
-
-    } while (true);
-  */
-}
-
-// Parada de emergencia:
-
-
-
-
-void modo_manual() {
-
-  // Ver si se tocan los botones
-  set_qi_manual();
-
-  // Update qi
-
-
-  // Update muñeco
-
-
-}
-
-
+// Calse botón pantalla
 class boton_t {
   public:
     int x_min;
@@ -120,9 +66,198 @@ class boton_t {
       }
       return 0;
     }
+};
+
+
+// Modo interfaz:
+enum modo_t {MENU, EMERGENCIA, MANUAL_Q, MANUAL_X, SECUENCIAS};
+modo_t mode = MENU;
+boolean salir = 0;
+boolean emergencia = 0;
+
+void setup() {
+
+  // Inicialización
+  //Serial1.begin(9600);
+  Serial.begin(9600);
+  tft_init();
+}
+
+
+
+
+void loop() {
+
+  // Interfaz segun modo:
+  switch (mode) {
+    case MENU:
+      modo_menu();
+      break;
+    case EMERGENCIA:
+      tft_parada_emergencia();
+      mode = MENU;
+      break;
+    case MANUAL_Q:
+      modo_manual_q();
+      break;
+    case MANUAL_X:
+      modo_manual_x();
+      break;
+  }
+
+
+  // Cambio de modo desde fuera del menu:
+  if (salir == true) {
+    mode = MENU;
+    salir = false;
+  }
+  if (emergencia == true) {
+    mode = EMERGENCIA;
+    emergencia = false;
+  }
+
+
+}
+
+// Parada de emergencia:
+
+
+
+//------------------------------------------------------------------------
+//                            MENU INTERFAZ
+//------------------------------------------------------------------------
+
+const boton_t Q(27, 97, 85, 155);
+const boton_t X(125, 195, 85, 155);
+const boton_t S(222, 292, 85, 155);
+
+
+void modo_menu() {
+
+  bool sececcionado = false;
+  tft_menu();
+  do {
+
+    int x, y;
+    while (se_presiona_pantalla(&x, &y) == 0);
+    while (se_presiona_pantalla(&x, &y) == 1);
+    Serial.print(x);
+    Serial.print('\t');
+    Serial.println(y);
+
+    if (Q.is_pressed(x, y)) {
+      mode = MANUAL_Q;
+    }
+
+    if (X.is_pressed(x, y)) {
+      mode = MANUAL_X;
+    }
+
+    if (S.is_pressed(x, y)) {
+      mode = SECUENCIAS;
+    }
+
+  } while (mode == MENU && !emergencia);
+
+}
+
+
+void tft_menu() {
+
+  tft_clear();
+  tft_formato_de_texto(BLUE, 2, 10, 10);
+  tft.print("Menu robot:");
+
+  // Imprimir botones en pantalla:
+  tft.fillRoundRect(Q.x_min, Q.y_min, 70, 70, 5, GREEN);
+  tft.fillRoundRect(Q.x_min+5, Q.y_min+5, 60, 60, 4, WHITE);
+  tft_formato_de_texto(BLUE, 1, Q.x_min-5, Q.y_min-15);
+  tft.print("Articulaciones:");
+  tft_formato_de_texto(BLACK, 2, Q.x_min+23, Q.y_min+25);
+  tft.print("qi");
+
+  tft.fillRoundRect(X.x_min, X.y_min, 70, 70, 5, GREEN);
+  tft.fillRoundRect(X.x_min+5, X.y_min+5, 60, 60, 5, WHITE);
+  tft_formato_de_texto(BLUE, 1, X.x_min+1, X.y_min-15);
+  tft.print("Coordenadas:");
+  tft_formato_de_texto(BLACK, 2, X.x_min+23, X.y_min+25);
+  tft.print("xi");
+  
+  tft.fillRoundRect(S.x_min, S.y_min, 70, 70, 5, GREEN);
+  tft.fillRoundRect(S.x_min+5, S.y_min+5, 60, 60, 5, WHITE);
+  tft_formato_de_texto(BLUE, 1, S.x_min+3, S.y_min-15);
+  tft.print("Secuencias:");
+  tft_formato_de_texto(BLACK, 2, S.x_min+23, S.y_min+25);
+  tft.print("si");
+  
+}
+
+
+
+
+#define T_MIN_REARME        10
+#define ANGULO_MAX          360.0
+#define ANGULO_MIN          0.0
+#define ANGULO_INCREMENTO   5.0
+#define ANGULO_INCREMENTOL  5.0
+#define ALTURA_MAX          20.0
+#define ALTURA_MIN          0.0
+#define ALTURA_INCREMENTO   1.0
+#define ALTURA_INCREMENTOL  1.0
+#define RADIO_MAX           35.0
+#define RADIO_MIN           10.0
+#define RADIO_INCREMENTO    1.0
+#define RADIO_INCREMENTOL    1.0
+
+
+
+struct coordenadas{
+  float x;
+  float y;
+  float z;
+  bool g;
+
+  void convert_q_to_x(float radio, float angulo, float altura, boolean gripper){
+    
+  }
+  void send(){
+    
+  }
 
 };
 
+
+
+
+
+
+
+void modo_manual_x() {
+
+  do {
+    //set_qi_manual();
+  } while (!salir && !emergencia);
+
+}
+
+
+
+
+//------------------------------------------------------------------------
+//                                . . .
+//------------------------------------------------------------------------
+
+
+
+void modo_manual_q() {
+
+  tft_control_manual();
+  tft_control_manual_print_q(radio, angulo, altura, gripper);
+  do {
+    set_qi_manual();
+  } while (!salir && !emergencia);
+
+}
 
 
 void set_qi_manual() {
@@ -145,6 +280,7 @@ void set_qi_manual() {
   int x, y;
   x = 0;
   y = 0;
+
   // Comprobar varias veces si se presiona el boton con un or
   if (se_presiona_pantalla(&x, &y) || se_presiona_pantalla(&x, &y) || se_presiona_pantalla(&x, &y) || se_presiona_pantalla(&x, &y)) {
 
@@ -163,9 +299,8 @@ void set_qi_manual() {
     for (int i = 0; i < 7; i++) {
       mp[i] = botones[i].is_pressed(x, y);
     }
-
-
   }
+
   else {
 
     for (int i = 0; i < 7; i++) {
@@ -256,25 +391,23 @@ void set_qi_manual() {
     mf[5] = 0;
   }
 
-  if(mf[6] == 1){
-    if(gripper == PLACE){
+  if (mf[6] == 1) {
+    if (gripper == PLACE) {
       gripper = PICK;
     }
-    else{
+    else {
       gripper = PLACE;
     }
     tft_control_manual_print_q(radio, angulo, altura, gripper);
     mf[6] = 0;
   }
 
-  // Pulsación larga:
-  // proximamente...
-
 }
 
 
+
 //------------------------------------------------------------------------
-//                      PANTALLAS DE LA INTERFAZ
+//              PANTALLAS DE LA INTERFAZ MANUAL r, h, a, g
 //------------------------------------------------------------------------
 
 
@@ -320,19 +453,37 @@ void tft_control_manual_print_q(float q1, float q2, float q3, boolean gripper) {
   tft_formato_de_texto(BLUE, 2, 210, 166);
   tft.print(q3, 1);
 
-  if(gripper == PICK){
+  if (gripper == PICK) {
     tft.fillRoundRect(180, 210, 125, 25, 3, RED);
     tft_formato_de_texto(BLACK, 2, 220, 215);
     tft.print("PICK");
   }
-  if(gripper == PLACE){
+  if (gripper == PLACE) {
     tft.fillRoundRect(180, 210, 125, 25, 3, GREEN);
     tft_formato_de_texto(BLACK, 2, 215, 215);
     tft.print("PLACE");
   }
-  
 
 }
+
+
+
+//------------------------------------------------------------------------
+//              PANTALLAS DE LA INTERFAZ MANUAL x, y, z, g
+//------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+//------------------------------------------------------------------------
+//                        PARADA DE EMERGENCIA
+//------------------------------------------------------------------------
+
 
 void tft_parada_emergencia() {
 
@@ -377,6 +528,22 @@ void tft_parada_emergencia() {
 
 
 //------------------------------------------------------------------------
+//                        FUNCIONES RUTINARIAS
+//------------------------------------------------------------------------
+
+void check_salir_y_emergencia(int x, int y) {
+  if (boton_salir(x, y) == 1) {
+    salir = true;
+  }
+  if (false) {
+    emergencia = true;
+  }
+}
+
+
+
+
+//------------------------------------------------------------------------
 //                        FUNCIONES DE LA TFT
 //------------------------------------------------------------------------
 
@@ -387,7 +554,7 @@ void tft_init() {
     id = 0x9486;
   }
   tft.begin(id);
-  tft.setRotation(1);
+  tft.setRotation(3);
   tft_clear();
 }
 
@@ -426,6 +593,10 @@ boolean se_presiona_pantalla(int* pos_x, int* pos_y) {
   if (pulsando) {
     *pos_x = map(p.y, 77, 910, 0, 320);
     *pos_y = map(p.x, 125, 900, 0, 240);
+    // Para orientacion invertida:
+    *pos_x = 320 - *pos_x;
+    *pos_y = 240 - *pos_y;
+    check_salir_y_emergencia(*pos_x, *pos_y);
   }
   return pulsando;
 }
@@ -437,3 +608,4 @@ boolean boton_salir(int x, int y) {
   }
   return (retorno);
 }
+
