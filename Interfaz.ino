@@ -5,10 +5,10 @@
 
 
 // Pines de la pantalla táctil
-#define XP 8
-#define XM A2
-#define YP A3
-#define YM 9
+#define TFT_XP 8
+#define TFT_XM A2
+#define TFT_YP A3
+#define TFT_YM 9
 
 // Configuraciones de la TFT
 MCUFRIEND_kbv tft;
@@ -24,7 +24,7 @@ MCUFRIEND_kbv tft;
 // Pantalla tactil:
 #define MINPRESSURE 160
 #define MAXPRESSURE 1000
-TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
+TouchScreen ts = TouchScreen(TFT_XP, TFT_YP, TFT_XM, TFT_YM, 300);
 Adafruit_GFX_Button on_btn, off_btn;
 
 
@@ -42,14 +42,12 @@ Adafruit_GFX_Button on_btn, off_btn;
 #define RADIO_MIN           10.0
 #define RADIO_INCREMENTO    1.0
 #define RADIO_INCREMENTOL    1.0
-
-
-// DoFs
-float radio = 10.0;
-float angulo = 180.0;
-float altura = 20.0;
-enum modo_gripper {PLACE = 0, PICK = 1};
-bool gripper = PICK;
+#define X_INCREMENTO  0.5
+#define X_INCREMENTOL 0.5
+#define Y_INCREMENTO  0.5
+#define Y_INCREMENTOL 0.5
+#define Z_INCREMENTO  0.5
+#define Z_INCREMENTOL 0.5
 
 
 // Calse botón pantalla
@@ -82,10 +80,9 @@ class coordenadas {
       return (getR() <= RADIO_MAX && getR() >= RADIO_MIN && getA() <= ANGULO_MAX && getA() >= ANGULO_MIN && getZ() <= ALTURA_MAX && getZ() >= ALTURA_MIN);
     }
 
-  private:
     void convert_q_to_x(float radio, float angulo, float altura, boolean gripper) {
-      x = radio * cos(angulo);
-      y = radio * sin(angulo);
+      x = radio * cos(angulo * (3.1416 / 180.0));
+      y = radio * sin(angulo * (3.1416 / 180.0));
       z = altura;
       g = gripper;
     }
@@ -94,9 +91,9 @@ class coordenadas {
       return sqrt(x * x + y * y);
     }
     float getA() {
-      float aux = atan2(y, x);
-      if (aux < 0) {
-        aux += 180.0;
+      float aux = atan2(y, x) * (180 / 3.1416);
+      if (y < 0) {
+        aux += 360.0;
       }
       return aux;
     }
@@ -105,9 +102,17 @@ class coordenadas {
     }
 };
 
+
+// DoFs
+float radio = 10.0;
+float angulo = 180.0;
+float altura = 20.0;
+coordenadas cord;
+enum modo_gripper {PLACE = 0, PICK = 1};
+bool gripper = PICK;
+
+
 void tft_control_manual_print_xi(coordenadas cc);
-
-
 
 
 // Modo interfaz:
@@ -116,12 +121,15 @@ modo_t mode = MENU;
 boolean salir = 0;
 boolean emergencia = 0;
 
+
 void setup() {
 
   // Inicialización
   //Serial1.begin(9600);
   Serial.begin(9600);
   tft_init();
+
+  cord.convert_q_to_x(radio, angulo, altura, gripper);
 }
 
 
@@ -143,6 +151,9 @@ void loop() {
       break;
     case MANUAL_X:
       modo_manual_x();
+      break;
+    case SECUENCIAS:
+      modo_secuencias();
       break;
   }
 
@@ -250,16 +261,19 @@ void tft_menu() {
 #define RADIO_INCREMENTOL    1.0
 
 
-
 void modo_manual_x() {
 
   tft_control_manual_xi();
-  coordenadas c;
-  tft_control_manual_print_xi(c);
+  tft_control_manual_print_xi(cord);
+
   do {
-    //set_qi_manual();
+    set_xi_manual();
   } while (!salir && !emergencia);
 
+  radio = cord.getR();
+  angulo = cord.getA();
+  altura = cord.getZ();
+  gripper = cord.g;
 }
 
 
@@ -273,13 +287,23 @@ void modo_manual_q() {
     set_qi_manual();
   } while (!salir && !emergencia);
 
+  cord.convert_q_to_x(radio, angulo, altura, gripper);
+
 }
 
 
+void modo_secuencias() {
+  tft_secuencias();
+
+  do {
+    set_secuencias();
+  } while (!salir && !emergencia);
+
+}
 
 
 //------------------------------------------------------------------------
-//                                . . .
+//                    DEFINICION DE LAS COORDENADAS                                . . .
 //------------------------------------------------------------------------
 
 
@@ -356,7 +380,7 @@ void set_qi_manual() {
       radio = radio + RADIO_INCREMENTO;
     }
     tft_control_manual_print_qi(radio, angulo, altura, gripper);
-    mf[0] = 0;
+    mf[1] = 0;
   }
 
   if (mf[1] == 1) {
@@ -424,6 +448,151 @@ void set_qi_manual() {
     tft_control_manual_print_qi(radio, angulo, altura, gripper);
     mf[6] = 0;
   }
+
+}
+
+
+
+void set_xi_manual() {
+
+  // Marcas de flanco y de pulso, detectar el flanco negativo de la pulsacion
+  static bool mf[7] = {0, 0, 0, 0, 0, 0, 0};
+  static bool mp[7] = {0, 0, 0, 0, 0, 0, 0};
+
+  // Botones presionables:
+  const boton_t XM(285, 310, 62, 87);
+  const boton_t Xm(185, 210, 62, 87);
+  const boton_t YM(285, 310, 112, 137);
+  const boton_t Ym(185, 210, 112, 137);
+  const boton_t ZM(285, 310, 162, 187);
+  const boton_t Zm(185, 210, 162, 187);
+  const boton_t Gp(180, 305, 210, 235);
+  const boton_t botones[7] = {XM, Xm, YM, Ym, ZM, Zm, Gp};
+
+  // Detectar si hay algún boton presionado
+  int x, y;
+  x = 0;
+  y = 0;
+
+  // Comprobar varias veces si se presiona el boton con un or
+  if (se_presiona_pantalla(&x, &y) || se_presiona_pantalla(&x, &y) || se_presiona_pantalla(&x, &y) || se_presiona_pantalla(&x, &y)) {
+
+    for (int i = 0; i < 7; i++) {
+      if (mp[i] != botones[i].is_pressed(x, y) && botones[i].is_pressed(x, y) == 0) {
+        mf[i] = 1;
+      }
+      else {
+        mf[i] = 0;
+      }
+      Serial.print(mf[i]);
+      Serial.write('\t');
+    }
+    Serial.println();
+
+    for (int i = 0; i < 7; i++) {
+      mp[i] = botones[i].is_pressed(x, y);
+    }
+  }
+
+  else {
+
+    for (int i = 0; i < 7; i++) {
+      if (mp[i] != botones[i].is_pressed(x, y) && botones[i].is_pressed(x, y) == 0) {
+        mf[i] = 1;
+      }
+      else {
+        mf[i] = 0;
+      }
+      Serial.print(mf[i]);
+      Serial.write('\t');
+    }
+    Serial.println();
+
+    for (int i = 0; i < 7; i++) {
+      mp[i] = 0;
+    }
+  }
+
+
+  // UNA PULSACION
+  if (mf[0] == 1) {
+    coordenadas aux;
+    aux = cord;
+    aux.x += X_INCREMENTO;
+    if (aux.ver_si_ok()) {
+      cord = aux;
+      tft_control_manual_print_xi(cord);
+    }
+    mf[0] = 0;
+  }
+
+  if (mf[1] == 1) {
+    coordenadas aux;
+    aux = cord;
+    aux.x -= X_INCREMENTO;
+    if (aux.ver_si_ok()) {
+      cord = aux;
+      tft_control_manual_print_xi(cord);
+    }
+    mf[0] = 0;
+  }
+
+  if (mf[2] == 1) {
+    coordenadas aux;
+    aux = cord;
+    aux.y += Y_INCREMENTO;
+    if (aux.ver_si_ok()) {
+      cord = aux;
+      tft_control_manual_print_xi(cord);
+    }
+    mf[0] = 0;
+  }
+
+  if (mf[3] == 1) {
+    coordenadas aux;
+    aux = cord;
+    aux.y -= Y_INCREMENTO;
+    if (aux.ver_si_ok()) {
+      cord = aux;
+      tft_control_manual_print_xi(cord);
+    }
+    mf[0] = 0;
+  }
+
+  if (mf[4] == 1) {
+    coordenadas aux;
+    aux = cord;
+    aux.z += Z_INCREMENTO;
+    if (aux.ver_si_ok()) {
+      cord = aux;
+      tft_control_manual_print_xi(cord);
+    }
+    mf[0] = 0;
+  }
+
+  if (mf[5] == 1) {
+    coordenadas aux;
+    aux = cord;
+    aux.z -= Z_INCREMENTO;
+    if (aux.ver_si_ok()) {
+      cord = aux;
+      tft_control_manual_print_xi(cord);
+    }
+    mf[0] = 0;
+  }
+
+  if (mf[6] == 1) {
+    if (cord.g == PLACE) {
+      cord.g = PICK;
+    }
+    else {
+      cord.g = PLACE;
+    }
+    tft_control_manual_print_xi(cord);
+    mf[6] = 0;
+  }
+
+
 
 }
 
@@ -529,22 +698,22 @@ void tft_control_manual_xi() {
 void tft_control_manual_print_xi(coordenadas cc) {
 
   tft.fillRoundRect(210, 62, 65, 25, 0, WHITE);
-  tft_formato_de_texto(BLUE, 2, 210, 66);
-  tft.print(cc.x, 1);
+  tft_formato_de_texto(BLUE, 2, 208, 66);
+  tft.print(cc.x, 2);
   tft.fillRoundRect(210, 112, 65, 25, 0, WHITE);
-  tft_formato_de_texto(BLUE, 2, 210, 116);
-  tft.print(cc.y, 1);
+  tft_formato_de_texto(BLUE, 2, 208, 116);
+  tft.print(cc.y, 2);
   tft.fillRoundRect(210, 162, 65, 25, 0, WHITE);
   tft_formato_de_texto(BLUE, 2, 210, 166);
   tft.print(cc.z, 1);
 
   if (cc.g == PICK) {
-    tft.fillRoundRect(180, 210, 125, 25, 3, RED);
+    tft.fillRoundRect(180, 208, 125, 25, 3, RED);
     tft_formato_de_texto(BLACK, 2, 220, 215);
     tft.print("PICK");
   }
   if (cc.g == PLACE) {
-    tft.fillRoundRect(180, 210, 125, 25, 3, GREEN);
+    tft.fillRoundRect(180, 208, 125, 25, 3, GREEN);
     tft_formato_de_texto(BLACK, 2, 215, 215);
     tft.print("PLACE");
   }
@@ -554,6 +723,29 @@ void tft_control_manual_print_xi(coordenadas cc) {
 
 
 
+//------------------------------------------------------------------------
+//              PANTALLAS DE LA INTERFAZ SECUENCIAS
+//------------------------------------------------------------------------
+
+void tft_secuencias() {
+
+  tft_clear();
+  tft_print_boton_salir();
+  tft_formato_de_texto(BLUE, 2, 10, 10);
+  tft.print("Sec. Pick and Place:");
+
+  // Print botones
+  // En proceso...
+}
+
+void set_secuencias() {
+
+  int x, y;
+  x = 0;
+  y = 0;
+  se_presiona_pantalla(&x, &y);
+
+}
 
 
 
@@ -662,10 +854,10 @@ void tft_print_boton_qi(int x, int y) {
 
 boolean se_presiona_pantalla(int* pos_x, int* pos_y) {
   TSPoint p = ts.getPoint();
-  pinMode(YP, OUTPUT);
-  pinMode(XM, OUTPUT);
-  digitalWrite(YP, HIGH);
-  digitalWrite(XM, HIGH);
+  pinMode(TFT_YP, OUTPUT);
+  pinMode(TFT_XM, OUTPUT);
+  digitalWrite(TFT_YP, HIGH);
+  digitalWrite(TFT_XM, HIGH);
   bool pulsando = (p.z > MINPRESSURE && p.z < MAXPRESSURE);
   if (pulsando) {
     *pos_x = map(p.y, 77, 910, 0, 320);
@@ -685,4 +877,3 @@ boolean boton_salir(int x, int y) {
   }
   return (retorno);
 }
-
