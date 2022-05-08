@@ -1,4 +1,3 @@
-
 #include <Adafruit_GFX.h>    // Libreria que incluye las especificaciones de la pantalla tft con el controlador ILI9341
 #include <TouchScreen.h>     // Libreria para trabajar con el panel tactil de la pantalla
 #include <MCUFRIEND_kbv.h>   // Libreria para trabajar con la pantalla
@@ -128,6 +127,9 @@ void setup() {
   //Serial1.begin(9600);
   Serial.begin(9600);
   tft_init();
+
+  // X: 10 - 166
+  // Y: 50 - 220
 
   cord.convert_q_to_x(radio, angulo, altura, gripper);
 }
@@ -260,6 +262,9 @@ void tft_menu() {
 #define RADIO_INCREMENTO    1.0
 #define RADIO_INCREMENTOL    1.0
 
+//------------------------------------------------------------------------
+//                         MODOS DE LA INTERFAZ
+//------------------------------------------------------------------------
 
 void modo_manual_x() {
 
@@ -275,8 +280,6 @@ void modo_manual_x() {
   altura = cord.getZ();
   gripper = cord.g;
 }
-
-
 
 
 void modo_manual_q() {
@@ -303,7 +306,60 @@ void modo_secuencias() {
 
 
 //------------------------------------------------------------------------
-//                    DEFINICION DE LAS COORDENADAS                                . . .
+//                          ENVIO DE COMANDOS
+//------------------------------------------------------------------------
+
+
+void UART_init() {
+  Serial1.begin(9600);
+}
+
+void UART_send(coordenadas cc) {
+
+  float r = cc.getR();
+  float a = cc.getA();
+  float z = cc.getZ();
+  /*
+  Serial1.write('C');
+  Serial1.write((byte*)r, 4);
+  Serial1.write((byte*)a, 4);
+  Serial1.write((byte*)z, 4);
+  Serial1.write(cc.g);
+  */
+}
+
+void UART_send(float q1, float q2, float q3, boolean gripper) {
+  Serial1.write('C');
+  /*
+  Serial1.write((byte*)q1, 4);
+  Serial1.write((byte*)q2, 4);
+  Serial1.write((byte*)q3, 4);
+  Serial1.write(gripper);
+  */
+}
+
+
+// Funciones de lectura para el programa general
+// No testeadas aun
+float q1, q2, q3;
+//boolean gripper;
+
+
+void read_interfaz() {
+  if (Serial.available()) {
+  }
+}
+
+
+
+
+
+
+
+
+
+//------------------------------------------------------------------------
+//                    DEFINICION DE LAS COORDENADAS
 //------------------------------------------------------------------------
 
 
@@ -604,7 +660,16 @@ void set_xi_manual() {
 
 
 void tft_control_manual_qi() {
+
   tft_clear();
+
+  /*
+  tft.drawFastHLine(10, 50, 156, BLACK);
+  tft.drawFastHLine(10, 220, 156, BLACK);
+  tft.drawFastVLine(10, 50, 170, BLACK);
+  tft.drawFastVLine(166, 50, 170, BLACK);
+*/
+  
   tft_print_boton_salir();
   tft_formato_de_texto(BLUE, 2, 10, 10);
   tft.print("Control manual qi:");
@@ -863,7 +928,7 @@ boolean se_presiona_pantalla(int* pos_x, int* pos_y) {
     *pos_x = map(p.y, 77, 910, 0, 320);
     *pos_y = map(p.x, 125, 900, 0, 240);
     // Para orientacion invertida:
-    *pos_x = 320 - *pos_x;
+    *pos_x = 320 - *pos_x; 
     *pos_y = 240 - *pos_y;
     check_salir_y_emergencia(*pos_x, *pos_y);
   }
