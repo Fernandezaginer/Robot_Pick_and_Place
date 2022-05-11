@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <CreaStepper.h>
-#include <Gripper.h>
 
 CreaStepper::CreaStepper(byte o_A1, byte o_A2,byte o_B1,byte o_B2, byte ena, byte enb, float angulo_Inicio){
   this->o_A1 = o_A1;
@@ -19,6 +18,8 @@ CreaStepper::CreaStepper(byte o_A1, byte o_A2,byte o_B1,byte o_B2, byte ena, byt
   pinMode(this->o_A2, OUTPUT);
   pinMode(this->o_B1, OUTPUT);
   pinMode(this->o_B2, OUTPUT);
+  
+  //Serial.begin(9600);
 }
 
 void CreaStepper::actualizar(){
@@ -49,7 +50,6 @@ void CreaStepper::darpaso(){
     digitalWrite(this->o_B2, CreaStepper::micropasos[i %8][3]);
     
     delayMicroseconds(this->T);
-    
 }
 
 void CreaStepper::darparo(){
@@ -83,4 +83,10 @@ void CreaStepper::set_ad(float angulo_deseado_del_motor_nuevo){
 }
 float CreaStepper::get_ad(){
   return this->angulo_deseado_del_motor;
+}
+void CreaStepper::setVelocidad(float velocidad){
+	float gp=0.9;
+	float f = (velocidad *360)/(gp*60);
+	this->T = 1000000/f;
+	Serial.println(this->T);
 }
