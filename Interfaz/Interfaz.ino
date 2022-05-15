@@ -4,11 +4,14 @@
 #include <MCUFRIEND_kbv.h>   // Libreria para trabajar con la pantalla
 
 
+// Pulsador de emergencia
+#define P_EMER 22
+
 // Pines de la pantalla táctil
-#define XP 8
-#define XM A2
-#define YP A3
-#define YM 9
+#define TFT_XP 8
+#define TFT_XM A2
+#define TFT_YP A3
+#define TFT_YM 9
 
 // Configuraciones de la TFT
 MCUFRIEND_kbv tft;
@@ -24,7 +27,7 @@ MCUFRIEND_kbv tft;
 // Pantalla tactil:
 #define MINPRESSURE 160
 #define MAXPRESSURE 1000
-TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
+TouchScreen ts = TouchScreen(TFT_XP, TFT_YP, TFT_XM, TFT_YM, 300);
 Adafruit_GFX_Button on_btn, off_btn;
 
 
@@ -42,71 +45,15 @@ Adafruit_GFX_Button on_btn, off_btn;
 #define RADIO_MIN           10.0
 #define RADIO_INCREMENTO    1.0
 #define RADIO_INCREMENTOL    1.0
+#define X_INCREMENTO  0.5
+#define X_INCREMENTOL 0.5
+#define Y_INCREMENTO  0.5
+#define Y_INCREMENTOL 0.5
+#define Z_INCREMENTO  0.5
+#define Z_INCREMENTOL 0.5
 
 
-// DoFs
-float radio = 10.0;
-float angulo = 180.0;
-float altura = 20.0;
-enum modo_gripper {PLACE = 0, PICK = 1}; 
-bool gripper = PICK;
-
-
-void setup() {
-  Serial.begin(9600);
-  tft_init();
-  tft_parada_emergencia();
-  tft_control_manual();
-  tft_control_manual_print_q(radio, angulo, altura, gripper);
-}
-
-
-
-void loop() {
-
-  modo_manual();
-
-  // Y esperamos a que el usuario seleccione un jugador:
-  /*
-    int id = 0;
-    do {
-    int x, y;
-    while (se_presiona_pantalla(&x, &y) == 0);
-    while (se_presiona_pantalla(&x, &y) == 1);
-    if (boton_salir(x, y) == 1) {
-      k = 3;
-      ret = 0;
-      break;
-    }
-    delay(100);
-    if (x >= 20 && x <= 180 && y >= 50 && y <= (50 + num_jug * 20)) {
-      id = (y - 50) / 20;
-      break;
-    }
-
-    } while (true);
-  */
-}
-
-// Parada de emergencia:
-
-
-
-
-void modo_manual() {
-
-  // Ver si se tocan los botones
-  set_qi_manual();
-
-  // Update qi
-
-
-  // Update muñeco
-
-
-}
-
-
+// Calse botón pantalla
 class boton_t {
   public:
     int x_min;
@@ -120,9 +67,260 @@ class boton_t {
       }
       return 0;
     }
-
 };
 
+
+// Clase coordenadas
+class coordenadas {
+  public:
+    coordenadas() : x(RADIO_MIN), y(0.0), z(ALTURA_MAX), g(0.0) {}
+    float x;
+    float y;
+    float z;
+    bool g;
+
+    bool ver_si_ok() {
+      return (getR() <= RADIO_MAX && getR() >= RADIO_MIN && getA() <= ANGULO_MAX && getA() >= ANGULO_MIN && getZ() <= ALTURA_MAX && getZ() >= ALTURA_MIN);
+    }
+
+    void convert_q_to_x(float radio, float angulo, float altura, boolean gripper) {
+      x = radio * cos(angulo * (3.1416 / 180.0));
+      y = radio * sin(angulo * (3.1416 / 180.0));
+      z = altura;
+      g = gripper;
+    }
+
+    float getR() {
+      return sqrt(x * x + y * y);
+    }
+    float getA() {
+      float aux = atan2(y, x) * (180 / 3.1416);
+      if (y < 0) {
+        aux += 360.0;
+      }
+      return aux;
+    }
+    float getZ() {
+      return z;
+    }
+};
+
+
+// DoFs
+float radio = 10.0;
+float angulo = 180.0;
+float altura = 20.0;
+coordenadas cord;
+enum modo_gripper {PLACE = 0, PICK = 1};
+bool gripper = PICK;
+
+
+void tft_control_manual_print_xi(coordenadas cc);
+
+
+// Modo interfaz:
+enum modo_t {MENU, EMERGENCIA, MANUAL_Q, MANUAL_X, SECUENCIAS};
+modo_t mode = MENU;
+boolean salir = 0;
+boolean emergencia = 0;
+
+
+void setup() {
+
+  // Inicialización
+  //Serial1.begin(9600);
+  Serial.begin(9600);
+  pinMode(P_EMER, INPUT_PULLUP);
+  tft_init();
+
+  cord.convert_q_to_x(radio, angulo, altura, gripper);
+}
+
+
+
+
+void loop() {
+
+  // Interfaz segun modo:
+  switch (mode) {
+    case MENU:
+      modo_menu();
+      break;
+    case EMERGENCIA:
+      tft_parada_emergencia();
+      mode = MENU;
+      break;
+    case MANUAL_Q:
+      modo_manual_q();
+      break;
+    case MANUAL_X:
+      modo_manual_x();
+      break;
+    case SECUENCIAS:
+      modo_secuencias();
+      break;
+  }
+
+
+  // Cambio de modo desde fuera del menu:
+  if (salir == true) {
+    mode = MENU;
+    salir = false;
+  }
+  if (emergencia == true) {
+    mode = EMERGENCIA;
+    emergencia = false;
+  }
+
+
+}
+
+// Parada de emergencia:
+
+
+
+//------------------------------------------------------------------------
+//                            MENU INTERFAZ
+//------------------------------------------------------------------------
+
+const boton_t Q(27, 97, 85, 155);
+const boton_t X(125, 195, 85, 155);
+const boton_t S(222, 292, 85, 155);
+
+
+void modo_menu() {
+
+  tft_menu();
+  do {
+
+    int x, y;
+    while (se_presiona_pantalla(&x, &y) == 0){
+      if(emergencia){
+        break;
+      }
+    }
+    while (se_presiona_pantalla(&x, &y) == 1){
+      if(emergencia){
+        break;
+      }
+    }
+    Serial.print(x);
+    Serial.print('\t');
+    Serial.println(y);
+
+    if (Q.is_pressed(x, y)) {
+      mode = MANUAL_Q;
+    }
+
+    if (X.is_pressed(x, y)) {
+      mode = MANUAL_X;
+    }
+
+    if (S.is_pressed(x, y)) {
+      mode = SECUENCIAS;
+    }
+
+    if(emergencia){
+      break;
+    }
+
+  } while (mode == MENU);
+
+}
+
+
+void tft_menu() {
+
+  tft_clear();
+  tft_formato_de_texto(BLUE, 2, 10, 10);
+  tft.print("Menu robot:");
+
+  // Imprimir botones en pantalla:
+  tft.fillRoundRect(Q.x_min, Q.y_min, 70, 70, 5, GREEN);
+  tft.fillRoundRect(Q.x_min + 5, Q.y_min + 5, 60, 60, 4, WHITE);
+  tft_formato_de_texto(BLUE, 1, Q.x_min - 5, Q.y_min - 15);
+  tft.print("Articulaciones:");
+  tft_formato_de_texto(BLACK, 2, Q.x_min + 23, Q.y_min + 25);
+  tft.print("qi");
+
+  tft.fillRoundRect(X.x_min, X.y_min, 70, 70, 5, GREEN);
+  tft.fillRoundRect(X.x_min + 5, X.y_min + 5, 60, 60, 5, WHITE);
+  tft_formato_de_texto(BLUE, 1, X.x_min + 1, X.y_min - 15);
+  tft.print("Coordenadas:");
+  tft_formato_de_texto(BLACK, 2, X.x_min + 23, X.y_min + 25);
+  tft.print("xi");
+
+  tft.fillRoundRect(S.x_min, S.y_min, 70, 70, 5, GREEN);
+  tft.fillRoundRect(S.x_min + 5, S.y_min + 5, 60, 60, 5, WHITE);
+  tft_formato_de_texto(BLUE, 1, S.x_min + 3, S.y_min - 15);
+  tft.print("Secuencias:");
+  tft_formato_de_texto(BLACK, 2, S.x_min + 23, S.y_min + 25);
+  tft.print("si");
+
+}
+
+
+
+
+#define T_MIN_REARME        10
+#define ANGULO_MAX          360.0
+#define ANGULO_MIN          0.0
+#define ANGULO_INCREMENTO   5.0
+#define ANGULO_INCREMENTOL  5.0
+#define ALTURA_MAX          20.0
+#define ALTURA_MIN          0.0
+#define ALTURA_INCREMENTO   1.0
+#define ALTURA_INCREMENTOL  1.0
+#define RADIO_MAX           35.0
+#define RADIO_MIN           10.0
+#define RADIO_INCREMENTO    1.0
+#define RADIO_INCREMENTOL    1.0
+
+
+void modo_manual_x() {
+
+  tft_control_manual_xi();
+  tft_control_manual_print_xi(cord);
+
+  do {
+    set_xi_manual();
+  } while (!salir && !emergencia);
+
+  radio = cord.getR();
+  angulo = cord.getA();
+  altura = cord.getZ();
+  gripper = cord.g;
+}
+
+
+
+
+void modo_manual_q() {
+
+  tft_control_manual_qi();
+  tft_control_manual_print_qi(radio, angulo, altura, gripper);
+  do {
+    set_qi_manual();
+  } while (!salir && !emergencia);
+
+  cord.convert_q_to_x(radio, angulo, altura, gripper);
+
+}
+
+
+void modo_secuencias() {
+  tft_secuencias();
+
+  do {
+    set_secuencias();
+  } while (!salir && !emergencia);
+
+}
+
+
+//------------------------------------------------------------------------
+//                    DEFINICION DE LAS COORDENADAS                                . . .
+//------------------------------------------------------------------------
 
 
 void set_qi_manual() {
@@ -145,6 +343,7 @@ void set_qi_manual() {
   int x, y;
   x = 0;
   y = 0;
+
   // Comprobar varias veces si se presiona el boton con un or
   if (se_presiona_pantalla(&x, &y) || se_presiona_pantalla(&x, &y) || se_presiona_pantalla(&x, &y) || se_presiona_pantalla(&x, &y)) {
 
@@ -163,9 +362,8 @@ void set_qi_manual() {
     for (int i = 0; i < 7; i++) {
       mp[i] = botones[i].is_pressed(x, y);
     }
-
-
   }
+
   else {
 
     for (int i = 0; i < 7; i++) {
@@ -197,8 +395,8 @@ void set_qi_manual() {
     else {
       radio = radio + RADIO_INCREMENTO;
     }
-    tft_control_manual_print_q(radio, angulo, altura, gripper);
-    mf[0] = 0;
+    tft_control_manual_print_qi(radio, angulo, altura, gripper);
+    mf[1] = 0;
   }
 
   if (mf[1] == 1) {
@@ -208,7 +406,7 @@ void set_qi_manual() {
     else {
       radio = radio - RADIO_INCREMENTO;
     }
-    tft_control_manual_print_q(radio, angulo, altura, gripper);
+    tft_control_manual_print_qi(radio, angulo, altura, gripper);
     mf[1] = 0;
   }
 
@@ -219,7 +417,7 @@ void set_qi_manual() {
     else {
       angulo = angulo + ANGULO_INCREMENTO;
     }
-    tft_control_manual_print_q(radio, angulo, altura, gripper);
+    tft_control_manual_print_qi(radio, angulo, altura, gripper);
     mf[2] = 0;
   }
 
@@ -230,7 +428,7 @@ void set_qi_manual() {
     else {
       angulo = angulo - ANGULO_INCREMENTO;
     }
-    tft_control_manual_print_q(radio, angulo, altura, gripper);
+    tft_control_manual_print_qi(radio, angulo, altura, gripper);
     mf[3] = 0;
   }
 
@@ -241,7 +439,7 @@ void set_qi_manual() {
     else {
       altura = altura + ALTURA_INCREMENTO;
     }
-    tft_control_manual_print_q(radio, angulo, altura, gripper);
+    tft_control_manual_print_qi(radio, angulo, altura, gripper);
     mf[4] = 0;
   }
 
@@ -252,37 +450,180 @@ void set_qi_manual() {
     else {
       altura = altura - ALTURA_INCREMENTO;
     }
-    tft_control_manual_print_q(radio, angulo, altura, gripper);
+    tft_control_manual_print_qi(radio, angulo, altura, gripper);
     mf[5] = 0;
   }
 
-  if(mf[6] == 1){
-    if(gripper == PLACE){
+  if (mf[6] == 1) {
+    if (gripper == PLACE) {
       gripper = PICK;
     }
-    else{
+    else {
       gripper = PLACE;
     }
-    tft_control_manual_print_q(radio, angulo, altura, gripper);
+    tft_control_manual_print_qi(radio, angulo, altura, gripper);
     mf[6] = 0;
   }
-
-  // Pulsación larga:
-  // proximamente...
 
 }
 
 
+
+void set_xi_manual() {
+
+  // Marcas de flanco y de pulso, detectar el flanco negativo de la pulsacion
+  static bool mf[7] = {0, 0, 0, 0, 0, 0, 0};
+  static bool mp[7] = {0, 0, 0, 0, 0, 0, 0};
+
+  // Botones presionables:
+  const boton_t XM(285, 310, 62, 87);
+  const boton_t Xm(185, 210, 62, 87);
+  const boton_t YM(285, 310, 112, 137);
+  const boton_t Ym(185, 210, 112, 137);
+  const boton_t ZM(285, 310, 162, 187);
+  const boton_t Zm(185, 210, 162, 187);
+  const boton_t Gp(180, 305, 210, 235);
+  const boton_t botones[7] = {XM, Xm, YM, Ym, ZM, Zm, Gp};
+
+  // Detectar si hay algún boton presionado
+  int x, y;
+  x = 0;
+  y = 0;
+
+  // Comprobar varias veces si se presiona el boton con un or
+  if (se_presiona_pantalla(&x, &y) || se_presiona_pantalla(&x, &y) || se_presiona_pantalla(&x, &y) || se_presiona_pantalla(&x, &y)) {
+
+    for (int i = 0; i < 7; i++) {
+      if (mp[i] != botones[i].is_pressed(x, y) && botones[i].is_pressed(x, y) == 0) {
+        mf[i] = 1;
+      }
+      else {
+        mf[i] = 0;
+      }
+      Serial.print(mf[i]);
+      Serial.write('\t');
+    }
+    Serial.println();
+
+    for (int i = 0; i < 7; i++) {
+      mp[i] = botones[i].is_pressed(x, y);
+    }
+  }
+
+  else {
+
+    for (int i = 0; i < 7; i++) {
+      if (mp[i] != botones[i].is_pressed(x, y) && botones[i].is_pressed(x, y) == 0) {
+        mf[i] = 1;
+      }
+      else {
+        mf[i] = 0;
+      }
+      Serial.print(mf[i]);
+      Serial.write('\t');
+    }
+    Serial.println();
+
+    for (int i = 0; i < 7; i++) {
+      mp[i] = 0;
+    }
+  }
+
+
+  // UNA PULSACION
+  if (mf[0] == 1) {
+    coordenadas aux;
+    aux = cord;
+    aux.x += X_INCREMENTO;
+    if (aux.ver_si_ok()) {
+      cord = aux;
+      tft_control_manual_print_xi(cord);
+    }
+    mf[0] = 0;
+  }
+
+  if (mf[1] == 1) {
+    coordenadas aux;
+    aux = cord;
+    aux.x -= X_INCREMENTO;
+    if (aux.ver_si_ok()) {
+      cord = aux;
+      tft_control_manual_print_xi(cord);
+    }
+    mf[0] = 0;
+  }
+
+  if (mf[2] == 1) {
+    coordenadas aux;
+    aux = cord;
+    aux.y += Y_INCREMENTO;
+    if (aux.ver_si_ok()) {
+      cord = aux;
+      tft_control_manual_print_xi(cord);
+    }
+    mf[0] = 0;
+  }
+
+  if (mf[3] == 1) {
+    coordenadas aux;
+    aux = cord;
+    aux.y -= Y_INCREMENTO;
+    if (aux.ver_si_ok()) {
+      cord = aux;
+      tft_control_manual_print_xi(cord);
+    }
+    mf[0] = 0;
+  }
+
+  if (mf[4] == 1) {
+    coordenadas aux;
+    aux = cord;
+    aux.z += Z_INCREMENTO;
+    if (aux.ver_si_ok()) {
+      cord = aux;
+      tft_control_manual_print_xi(cord);
+    }
+    mf[0] = 0;
+  }
+
+  if (mf[5] == 1) {
+    coordenadas aux;
+    aux = cord;
+    aux.z -= Z_INCREMENTO;
+    if (aux.ver_si_ok()) {
+      cord = aux;
+      tft_control_manual_print_xi(cord);
+    }
+    mf[0] = 0;
+  }
+
+  if (mf[6] == 1) {
+    if (cord.g == PLACE) {
+      cord.g = PICK;
+    }
+    else {
+      cord.g = PLACE;
+    }
+    tft_control_manual_print_xi(cord);
+    mf[6] = 0;
+  }
+
+
+
+}
+
+
+
 //------------------------------------------------------------------------
-//                      PANTALLAS DE LA INTERFAZ
+//              PANTALLAS DE LA INTERFAZ MANUAL r, h, a, g
 //------------------------------------------------------------------------
 
 
-void tft_control_manual() {
+void tft_control_manual_qi() {
   tft_clear();
   tft_print_boton_salir();
   tft_formato_de_texto(BLUE, 2, 10, 10);
-  tft.print("Control manual:");
+  tft.print("Control manual qi:");
 
   // Botones de interación
   tft_formato_de_texto(BLUE, 2, 180, 40);
@@ -308,7 +649,7 @@ void tft_control_manual() {
 }
 
 
-void tft_control_manual_print_q(float q1, float q2, float q3, boolean gripper) {
+void tft_control_manual_print_qi(float q1, float q2, float q3, boolean gripper) {
 
   tft.fillRoundRect(210, 62, 65, 25, 0, WHITE);
   tft_formato_de_texto(BLUE, 2, 210, 66);
@@ -320,19 +661,114 @@ void tft_control_manual_print_q(float q1, float q2, float q3, boolean gripper) {
   tft_formato_de_texto(BLUE, 2, 210, 166);
   tft.print(q3, 1);
 
-  if(gripper == PICK){
+  if (gripper == PICK) {
     tft.fillRoundRect(180, 210, 125, 25, 3, RED);
     tft_formato_de_texto(BLACK, 2, 220, 215);
     tft.print("PICK");
   }
-  if(gripper == PLACE){
+  if (gripper == PLACE) {
     tft.fillRoundRect(180, 210, 125, 25, 3, GREEN);
     tft_formato_de_texto(BLACK, 2, 215, 215);
     tft.print("PLACE");
   }
-  
 
 }
+
+
+
+//------------------------------------------------------------------------
+//              PANTALLAS DE LA INTERFAZ MANUAL x, y, z, g
+//------------------------------------------------------------------------
+
+
+void tft_control_manual_xi() {
+  tft_clear();
+  tft_print_boton_salir();
+  tft_formato_de_texto(BLUE, 2, 10, 10);
+  tft.print("Control manual xi:");
+
+  // Botones de interación
+  tft_formato_de_texto(BLUE, 2, 180, 40);
+  tft.print("X:");
+  tft_print_boton_qi(180, 60);
+  tft_formato_de_texto(BLUE, 2, 180, 90);
+  tft.print("Y:");
+  tft_print_boton_qi(180, 110);
+  tft_formato_de_texto(BLUE, 2, 180, 140);
+  tft.print("Z:");
+  tft_print_boton_qi(180, 160);
+  tft_formato_de_texto(BLUE, 2, 180, 190);
+  tft.print("Gripper:");
+
+  // Cajas separadoras:
+  tft.drawFastHLine(177, 37, 131, BLACK);
+  tft.drawFastHLine(177, 87, 131, BLACK);
+  tft.drawFastHLine(177, 137, 131, BLACK);
+  tft.drawFastHLine(177, 187, 131, BLACK);
+  tft.drawFastHLine(177, 237, 131, BLACK);
+  tft.drawFastVLine(177, 37, 200, BLACK);
+  tft.drawFastVLine(308, 37, 200, BLACK);
+}
+
+
+void tft_control_manual_print_xi(coordenadas cc) {
+
+  tft.fillRoundRect(210, 62, 65, 25, 0, WHITE);
+  tft_formato_de_texto(BLUE, 2, 208, 66);
+  tft.print(cc.x, 2);
+  tft.fillRoundRect(210, 112, 65, 25, 0, WHITE);
+  tft_formato_de_texto(BLUE, 2, 208, 116);
+  tft.print(cc.y, 2);
+  tft.fillRoundRect(210, 162, 65, 25, 0, WHITE);
+  tft_formato_de_texto(BLUE, 2, 210, 166);
+  tft.print(cc.z, 1);
+
+  if (cc.g == PICK) {
+    tft.fillRoundRect(180, 208, 125, 25, 3, RED);
+    tft_formato_de_texto(BLACK, 2, 220, 215);
+    tft.print("PICK");
+  }
+  if (cc.g == PLACE) {
+    tft.fillRoundRect(180, 208, 125, 25, 3, GREEN);
+    tft_formato_de_texto(BLACK, 2, 215, 215);
+    tft.print("PLACE");
+  }
+
+}
+
+
+
+
+//------------------------------------------------------------------------
+//              PANTALLAS DE LA INTERFAZ SECUENCIAS
+//------------------------------------------------------------------------
+
+void tft_secuencias() {
+
+  tft_clear();
+  tft_print_boton_salir();
+  tft_formato_de_texto(BLUE, 2, 10, 10);
+  tft.print("Sec. Pick and Place:");
+
+  // Print botones
+  // En proceso...
+}
+
+void set_secuencias() {
+
+  int x, y;
+  x = 0;
+  y = 0;
+  se_presiona_pantalla(&x, &y);
+
+}
+
+
+
+//------------------------------------------------------------------------
+//                        PARADA DE EMERGENCIA
+//------------------------------------------------------------------------
+
 
 void tft_parada_emergencia() {
 
@@ -377,6 +813,22 @@ void tft_parada_emergencia() {
 
 
 //------------------------------------------------------------------------
+//                        FUNCIONES RUTINARIAS
+//------------------------------------------------------------------------
+
+void check_salir_y_emergencia(int x, int y) {
+  if (boton_salir(x, y) == 1) {
+    salir = true;
+  }
+  if (!digitalRead(P_EMER)) {
+    emergencia = true;
+  }
+}
+
+
+
+
+//------------------------------------------------------------------------
 //                        FUNCIONES DE LA TFT
 //------------------------------------------------------------------------
 
@@ -387,7 +839,7 @@ void tft_init() {
     id = 0x9486;
   }
   tft.begin(id);
-  tft.setRotation(1);
+  tft.setRotation(3);
   tft_clear();
 }
 
@@ -418,15 +870,20 @@ void tft_print_boton_qi(int x, int y) {
 
 boolean se_presiona_pantalla(int* pos_x, int* pos_y) {
   TSPoint p = ts.getPoint();
-  pinMode(YP, OUTPUT);
-  pinMode(XM, OUTPUT);
-  digitalWrite(YP, HIGH);
-  digitalWrite(XM, HIGH);
+  pinMode(TFT_YP, OUTPUT);
+  pinMode(TFT_XM, OUTPUT);
+  digitalWrite(TFT_YP, HIGH);
+  digitalWrite(TFT_XM, HIGH);
   bool pulsando = (p.z > MINPRESSURE && p.z < MAXPRESSURE);
   if (pulsando) {
     *pos_x = map(p.y, 77, 910, 0, 320);
     *pos_y = map(p.x, 125, 900, 0, 240);
+    // Para orientacion invertida:
+    *pos_x = 320 - *pos_x;
+    *pos_y = 240 - *pos_y;
+    check_salir_y_emergencia(*pos_x, *pos_y);
   }
+  check_salir_y_emergencia(0, 0);
   return pulsando;
 }
 
