@@ -1,0 +1,9 @@
+Mpu9250	KEYWORD1	Mpu9250
+
+read_angle_z	Keyword2
+
+read_magnetom_angle	Keyword2
+
+MPU9250_read	Keyword2
+
+MPU9250_init	Keyword2
