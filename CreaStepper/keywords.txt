@@ -1,7 +1,0 @@
-CreaStepper	KEYWORD1	CreaStepper
-
-actualizar	Keyword2
-
-casa	Keyword2
-
-setVelocidad	Keyword2
