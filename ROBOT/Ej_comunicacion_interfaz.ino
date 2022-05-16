@@ -1,4 +1,6 @@
 
+// Código a usar por el robot para leer datos de la interfaz (Teach Pendant)
+
 
 // Clase de comunicación con la interfaz
 class COM_Interfaz {
