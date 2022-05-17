@@ -3,10 +3,10 @@
 #include <Wire.h>
 
 float Mpu9250::read_angle_z() {
-	static unsigned long m_o = 0;
-	Gz = Gz + (((float)RGz) - OFFSET_GZ) * 0.007907 * (millis() - m_o) * 0.0075;
-	m_o = millis();
-	return Gz;
+  static unsigned long m_o = 0;
+  Gy = Gy + (((float)RGy) - OFFSET_GY) * 0.007907 * (millis() - m_o) * 0.0075;
+  m_o = millis();
+  return Gy;
 }
 float Mpu9250::read_magnetom_angle() {
 	static float orientacion_o = 0.0;
@@ -33,7 +33,7 @@ void Mpu9250::MPU9250_read() {
 	RGy = (float)((Wire.read() << 8) | Wire.read());
 	RGz = (float)((Wire.read() << 8) | Wire.read());
 
-	// Lectura de la aceleración lineal:
+	// Lectura de la aceleraciÃ³n lineal:
 	Wire.beginTransmission(_MPU9250);
 	Wire.write(0x3B);
 	Wire.endTransmission(false);
@@ -76,7 +76,7 @@ void Mpu9250::MPU9250_init() {
 	  #define MPU9250_RANGE16G 0x03
 	*/
 	byte tempRegVal = 0;
-	tempRegVal |= (0x03 << 3);    // Cambiar aquí el rango de lectura
+	tempRegVal |= (0x03 << 3);    // Cambiar aquÃ­ el rango de lectura
 	Wire.beginTransmission(_MPU9250);
 	Wire.write(0x1C);
 	Wire.write(tempRegVal);
