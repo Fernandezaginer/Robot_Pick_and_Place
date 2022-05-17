@@ -13,10 +13,10 @@
 #define OFFSET_Z 0.00
 
 
-// Configuración giroscopio:
-#define OFFSET_GX  429460.464
-#define OFFSET_GY  638.605
-#define OFFSET_GZ  5.16            //51.754
+// ConfiguraciÃ³n giroscopio:
+#define OFFSET_GX  17.93
+#define OFFSET_GY  16.94
+#define OFFSET_GZ  14.51            //51.754
 
 
 class Mpu9250 {
@@ -26,13 +26,14 @@ public:
 	int16_t RGx, RGy, RGz;
 	float Mx = 0.0, My = 0.0, Mz = 0.0;
 	float Gx, Gy, Gz;
-// Configuración giroscopio:
+// ConfiguraciÃ³n giroscopio:
 	float val_calibrado;
 	//
 	float read_angle_z();
 	float read_magnetom_angle();
 	void MPU9250_read();
 	void MPU9250_init();
-
+private:
+	float kalman_filter(float U);
 };
 #endif
