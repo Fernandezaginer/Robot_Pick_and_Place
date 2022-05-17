@@ -6,7 +6,7 @@ float Mpu9250::read_angle_z() {
   static unsigned long m_o = 0;
   Gy = Gy + (((float)RGy) - OFFSET_GY) * 0.007907 * (millis() - m_o) * 0.0075;
   m_o = millis();
-  return Gy;
+  return kalman_filter(Gy);
 }
 float Mpu9250::read_magnetom_angle() {
 	static float orientacion_o = 0.0;
@@ -118,4 +118,19 @@ void Mpu9250::MPU9250_init() {
 		MPU9250_read();
 	}
 
+}
+
+float Mpu9250::kalman_filter(float U) {
+  static const float R = 50.0;
+  static const float H = 1.0;
+  static double Q = 10.0;
+  static double P = 0.0;
+  static double U_hat = 0.0;
+  static double K = 0.0;
+
+  K = (P * H) / (H * P * H + R);
+  U_hat = U_hat + K * (U - H * U_hat);
+  P = (1 - K * H) * P + Q;
+
+  return U_hat;
 }
