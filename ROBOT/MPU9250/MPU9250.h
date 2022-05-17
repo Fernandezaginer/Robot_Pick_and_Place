@@ -25,7 +25,8 @@ public:
 	float Ax, Ay, Az;
 	int16_t RGx, RGy, RGz;
 	float Mx = 0.0, My = 0.0, Mz = 0.0;
-	float Gx, Gy, Gz;
+	float Gx, Gz;
+	float Gy = 180.0;
 // Configuración giroscopio:
 	float val_calibrado;
 	//
