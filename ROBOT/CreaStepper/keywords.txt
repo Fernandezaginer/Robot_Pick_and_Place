@@ -1,7 +1,15 @@
 CreaStepper	KEYWORD1	CreaStepper
 
-actualizar	Keyword2
+actualizar	KEYWORD3
 
-casa	Keyword2
+casa	KEYWORD3
 
-setVelocidad	Keyword2
+setVelocidad	KEYWORD2
+
+set_ad	KEYWORD2
+
+get_ad	KEYWORD2
+
+setVelocidad KEYWORD2
+
+angulo	LITERAL1

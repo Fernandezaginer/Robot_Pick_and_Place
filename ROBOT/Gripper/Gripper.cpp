@@ -4,8 +4,8 @@
 
 
 Gripper::Gripper(byte o_O1,byte o_O2){
-  this->o_O1= 0_O1;
-  this->o_O2= 0_O2;
+  this->o_O1= o_O1;
+  this->o_O2= o_O2;
 
   pinMode(this->o_O1, OUTPUT);
   pinMode(this->o_O2, OUTPUT);

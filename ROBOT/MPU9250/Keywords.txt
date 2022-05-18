@@ -7,3 +7,5 @@ read_magnetom_angle	Keyword2
 MPU9250_read	Keyword2
 
 MPU9250_init	Keyword2
+
+Gz	LITERAL1

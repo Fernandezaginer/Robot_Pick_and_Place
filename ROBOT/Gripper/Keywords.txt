@@ -1,0 +1,5 @@
+Gripper	KEYWORD1	Gripper
+
+abrir_gripper	Keyword2
+
+abrir_gripper	Keyword2
