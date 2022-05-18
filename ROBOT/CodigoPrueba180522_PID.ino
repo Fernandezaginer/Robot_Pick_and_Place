@@ -1,3 +1,4 @@
+#include <PIDController.hpp>
 #include <CreaStepper.h>
 #include <Gripper.h>
 #include <MPU9250.h>
@@ -16,6 +17,12 @@
 #define M2_PWM  3
 #define fin_de_carrera 18
 
+#define M3_A1   22
+#define M3_A2   23
+#define M3_B1   24
+#define M3_B2   25
+#define M3_PWM   2
+
 class EncoderAbsoluto{
 private:
   //long int read_register;
@@ -29,20 +36,25 @@ public:
 
 CreaStepper eje_R = CreaStepper(M1_A1, M1_A2, M1_B1, M1_B2, M1_PWM, 0, 12, 39.5);
 CreaStepper eje_Z = CreaStepper(M2_A1, M2_A2, M2_B1, M2_B2, M2_PWM, 9999, 0, 1900);
+CreaStepper eje_Th = CreaStepper(M3_A1, M3_A2, M3_B1, M3_B2, M3_PWM, 180, 30, 330);
 
-Gripper MPG = Gripper(15,14);
+
+Gripper MPG = Gripper(8,9);
 //Mpu9250 MPU;
 
 EncoderAbsoluto enc = EncoderAbsoluto(30);
 
+PID::PIDParameters<double> parameters(4.0, 0, 0);
+PID::PIDController<double> pidController(parameters);
+
 void setup() {
   Serial.begin(115200);
   pinMode(fin_de_carrera,INPUT_PULLUP);
-   
-  eje_R.set_ad(50);
+  MPU.MPU9250_init();
+
+  /*INICIALIZACIÓN EJE Z*/
   eje_Z.set_ad(0);
   eje_Z.setVelocidad(300);
-
   while(eje_Z.angulo != 0){
     eje_Z.actualizar();
     if(!digitalRead(fin_de_carrera)){
@@ -50,78 +62,42 @@ void setup() {
     }
     Serial.println(eje_Z.angulo);
   }
-  eje_R.set_ad(38);
-  eje_R.angulo = enc.getPos_cm();
-  while(eje_R.angulo < 37){
-    eje_R.actualizar();
-    eje_R.angulo = enc.getPos_cm();
-  }
   delay(1000);
-  MPG.abrir_gripper();
-  eje_Z.set_ad(1600);
-  while(eje_Z.angulo < 1598){
-    eje_Z.actualizar();
-  }
-  MPG.cerrar_gripper();
-  eje_Z.set_ad(0);
-  while(eje_Z.angulo > 2){
-    eje_Z.actualizar();
-  }
-  eje_R.set_ad(15);
-  eje_R.angulo = enc.getPos_cm();
-  while(eje_R.angulo > 16){
-    eje_R.actualizar();
-    eje_R.angulo = enc.getPos_cm();
-  }
-  eje_Z.set_ad(1900);
-  while(eje_Z.angulo < 1895){
-    eje_Z.actualizar();
-  }
-  MPG.abrir_gripper();
-  eje_Z.set_ad(0);
-  while(eje_Z.angulo > 2){
-    eje_Z.actualizar();
-  }
-  MPG.cerrar_gripper();
+  //eje_Z.set_ad(1650);
   //eje_Z.set_ad(1900);
-  //MPU.MPU9250_init();
 
 
-  //MPU.Gz = 0.0;
 
-
-  // Calibrado:
-  /*
-    for (int i = 0; i < 1; i++) {
-    uint32_t suma;
-    suma = 0;
-    for (int i = 0; i < 10000; i++) {
-      MPU9250_read();
-      suma = suma + RGz;
-    }
-    val_calibrado = (float) ((float)suma / 10000.0);
-    Serial.println(val_calibrado);
-    }
-  */
-  //eje_R.setVelocidad(0.25);
+  /*INICIALIZACIÓN EJE R*/
+  eje_R.set_ad(50);
   eje_R.setVelocidad(500);
+
+
+
+  /*INICIALIZACIÓN EJE Th*/
+  pidController.SetOutputLimits(-300,300);
+  pidController.Input = enc.getPos_cm();
+  pidController.Setpoint = 100;
 }
 void loop() {
-  //eje_R.angulo = MPU.read_angle_z();
+  /*CONTROL EJE Z*/
+  eje_Z.actualizar();
+
+
+
+  /*CONTROL EJE R*/
   eje_R.angulo = enc.getPos_cm();
-  MPG.abrir_gripper();
-  MPG.cerrar_gripper();
-  //eje_R.actualizar();
-  //eje_Z.actualizar();
-  digitalWrite(M2_PWM, LOW);
-  digitalWrite(M1_PWM, LOW);
-  Serial.print(eje_Z.angulo);
-  Serial.print(", ");
-  Serial.println(eje_Z.get_ad());
-  //MPG.abrir_gripper();
-  //MPG.cerrar_gripper();
-  
-  //MPU.MPU9250_read();
+  eje_R.actualizar();
+
+
+
+  /*CONTROL EJE Th*/
+  MPU.MPU9250_read();
+  pidController.Input = MPU.read_angle_z();
+  pidController.Update();
+  eje_Th.setVelocidad(abs(pidController.Output));
+  eje_Th.set_ad(pidController.Output>0?999:-999);
+  eje_Th.angulo = 0;
 }
 byte EncoderAbsoluto::getPos(){
   //byte valor = 0b00111111&read_register;
