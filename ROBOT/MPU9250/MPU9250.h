@@ -15,7 +15,7 @@
 
 // Configuración giroscopio:
 #define OFFSET_GX  17.93
-#define OFFSET_GY  16.94
+#define OFFSET_GY  15.44
 #define OFFSET_GZ  14.51            //51.754
 
 
