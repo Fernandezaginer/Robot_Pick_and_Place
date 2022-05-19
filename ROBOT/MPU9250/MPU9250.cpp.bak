@@ -9,18 +9,18 @@ float Mpu9250::read_angle_z() {
   return kalman_filter(Gy);
 }
 float Mpu9250::read_magnetom_angle() {
-  static float orientacion_o = 0.0;
-  const float al = 0.05;
-  float aux;
-  float orientacion = atan2(Mz, My) * (180.0 / 3.1416);
-  if (orientacion < 0.0) {
-    orientacion = 360 + orientacion;
-  }
+	static float orientacion_o = 0.0;
+	const float al = 0.1;
+	float aux;
+	float orientacion = atan2(My, Mx) * (180.0 / 3.1416);
+	if (orientacion < 0.0) {
+		orientacion = 360 + orientacion;
+	}
 
-  aux = orientacion_o * (1 - al) + orientacion * al;
-  orientacion_o = aux;
+	aux = orientacion_o * (1 - al) + orientacion * al;
+	orientacion_o = aux;
 
-  return kalman_filter_2(aux);
+	return aux;
 }
 
 void Mpu9250::MPU9250_read() {
@@ -123,22 +123,6 @@ void Mpu9250::MPU9250_init() {
 float Mpu9250::kalman_filter(float U) {
   static const float R = 50.0;
   static const float H = 1.0;
-  static double Q = 10.0;
-  static double P = 0.0;
-  static double U_hat = 0.0;
-  static double K = 0.0;
-
-  K = (P * H) / (H * P * H + R);
-  U_hat = U_hat + K * (U - H * U_hat);
-  P = (1 - K * H) * P + Q;
-
-  return U_hat;
-}
-
-
-float Mpu9250::kalman_filter_2(float U) {
-  static const float R = 50.0;
-  static const float H = 2.0;
   static double Q = 10.0;
   static double P = 0.0;
   static double U_hat = 0.0;

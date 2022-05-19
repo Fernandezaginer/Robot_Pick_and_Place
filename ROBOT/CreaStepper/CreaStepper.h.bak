@@ -6,6 +6,7 @@ class CreaStepper{
   private: 
 	friend class Mpu9250;
     unsigned long T;	//poner una condicion para T<400
+	unsigned long Tb;
     byte o_A1;
     byte o_A2;
     byte o_B1;

@@ -13,13 +13,13 @@ Gripper::Gripper(byte o_O1,byte o_O2){
 void Gripper::abrir_gripper(){
   digitalWrite(this->o_O1, LOW);
   digitalWrite(this->o_O2, HIGH);
-  delay(1000);
+  delay(2000);
   digitalWrite(this->o_O2, LOW);
 }
 void Gripper::cerrar_gripper(){
   digitalWrite(this->o_O2, LOW);
   digitalWrite(this->o_O1, HIGH);
-  delay(1000);
+  delay(2000);
   digitalWrite(this->o_O1, LOW);  
 }
 

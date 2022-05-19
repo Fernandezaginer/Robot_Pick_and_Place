@@ -63,7 +63,7 @@ void CreaStepper::darpaso(){
 }
 
 void CreaStepper::darparo(){
-    analogWrite(this->ena, 90);
+    analogWrite(this->ena, 0);
     digitalWrite(this->o_A1, CreaStepper::micropasos[i %8][0]);
     digitalWrite(this->o_A2, CreaStepper::micropasos[i %8][1]);
     digitalWrite(this->o_B1, CreaStepper::micropasos[i %8][2]);
