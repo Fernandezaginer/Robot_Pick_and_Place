@@ -36,5 +36,6 @@ public:
 	void MPU9250_init();
 private:
 	float kalman_filter(float U);
+	float kalman_filter_2(float U);
 };
 #endif
