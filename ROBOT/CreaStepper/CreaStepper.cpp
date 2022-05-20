@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <CreaStepper.h>
 
-CreaStepper::CreaStepper(byte o_A1, byte o_A2,byte o_B1,byte o_B2, byte ena, float angulo_Inicio, float lim_inf, float lim_sup, float velocidad, float aceleracion, float velocidad_max)
+CreaStepper::CreaStepper(byte o_A1, byte o_A2,byte o_B1,byte o_B2, byte ena, float angulo_Inicio, float lim_inf, float lim_sup)
 {
 	this->o_A1 = o_A1;
 	this->o_A2 = o_A2;
@@ -16,12 +16,6 @@ CreaStepper::CreaStepper(byte o_A1, byte o_A2,byte o_B1,byte o_B2, byte ena, flo
 	
 	this->_lim_inf = lim_inf;
 	this->_lim_sup = lim_sup;
-	
-	this->_velocidad = velocidad;
-	this->_velocidad_max = velocidad_max;
-	this->_aceleracion = aceleracion;
-	
-	this->estado = 0;
 	
 	this->t_0 = micros();
 	
@@ -47,20 +41,9 @@ void CreaStepper::actualizar(){
 		else{
 			darparo();
 		}
+		//Serial.println(this->T);
 		this->t_0 = micros();
 	}
-	//Aceleraciones:
-	if(this->estado < decelerando){
-		if(2*this->_aceleracion*(1-((this->angulo_deseado_del_motor - this->angulo)*this->_aceleracion/(this->_velocidad*this->_velocidad))) >= this->_aceleracion){
-			estado = decelerando;
-		}
-	}
-	else if(this->estado == acelerando && this->_velocidad >= this->_velocidad_max){
-		estado = vcons;
-	}
-	this->_velocidad += this->estado*this->_aceleracion*(micros()-this->t_1);
-	this->setVelocidad(this->_velocidad);
-	this->t_1 = micros();
 }
 
 void CreaStepper::darpaso(){
@@ -73,6 +56,10 @@ void CreaStepper::darpaso(){
     digitalWrite(this->o_A2, CreaStepper::micropasos[i %8][1]);
     digitalWrite(this->o_B1, CreaStepper::micropasos[i %8][2]);
     digitalWrite(this->o_B2, CreaStepper::micropasos[i %8][3]);
+	//delayMicroseconds(this->T);
+	//delay(this->Tb);
+	//Serial.print(this->Tb); Serial.print("s  ");
+	//Serial.println(this->T);
 }
 
 void CreaStepper::darparo(){
@@ -81,6 +68,8 @@ void CreaStepper::darparo(){
     digitalWrite(this->o_A2, CreaStepper::micropasos[i %8][1]);
     digitalWrite(this->o_B1, CreaStepper::micropasos[i %8][2]);
     digitalWrite(this->o_B2, CreaStepper::micropasos[i %8][3]);
+    //delay(1000);
+	//casa();
 }
 void CreaStepper::casa(){
   this->angulo_deseado_del_motor = this->angulo_inicial;
@@ -88,9 +77,11 @@ void CreaStepper::casa(){
 void CreaStepper::set_ad(float angulo_deseado_del_motor_nuevo){  
   if(angulo_deseado_del_motor_nuevo > this->_lim_sup){
    this->angulo_deseado_del_motor = _lim_sup;
+   //Serial.println("Te pasas");
   }
   else if(angulo_deseado_del_motor_nuevo < this->_lim_inf){
     this->angulo_deseado_del_motor = _lim_inf;
+	//Serial.println("Te quedas corto");
   }
   else{
     this->angulo_deseado_del_motor = angulo_deseado_del_motor_nuevo;
@@ -102,7 +93,12 @@ float CreaStepper::get_ad(){
 void CreaStepper::setVelocidad(float velocidad){
 	float gp=0.9;
 	float f = (velocidad *360)/(gp*60);
-	this->T = 1000000/f;
+	float aux = 1000000/f;
+	if(aux < 400){
+		aux = 400;
+	}
+	this->T = aux;
+	
 }
 
 const bool CreaStepper::micropasos[8][4] = {

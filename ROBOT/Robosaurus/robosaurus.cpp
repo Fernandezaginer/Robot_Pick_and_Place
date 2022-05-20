@@ -27,9 +27,9 @@ Robosaurus::Robosaurus(CreaStepper eje_R, CreaStepper eje_Z, CreaStepper eje_Th,
 	pinMode(this->_fin_de_carrera, INPUT_PULLUP);
 }
 
-void Robosaurus::setup(){
+void Robosaurus::begin(){
 	/*INICIALIZACIÓN MPU*/
-	MPU.MPU9250_init();
+	_MPU.MPU9250_init();
 	
 	/*INICIALIZACIÓN MOTORES*/
 	TCCR0A |= 0b00000011;
@@ -37,43 +37,43 @@ void Robosaurus::setup(){
 	TCCR3B |= 0b00001001;
 	
 	/*INICIALIZACIÓN EJE Z*/
-	eje_Z.set_ad(0);
-	eje_Z.setVelocidad(300);
-	eje_Z.angulo = -9999;
-	while(eje_Z.angulo != 0){
-		eje_Z.actualizar();
-		if(!digitalRead(fin_de_carrera)){
-			eje_Z.angulo = 0;
+	_eje_Z.set_ad(0);
+	_eje_Z.setVelocidad(300);
+	_eje_Z.angulo = -9999;
+	while(_eje_Z.angulo != 0){
+		_eje_Z.actualizar();
+		if(!digitalRead(_fin_de_carrera)){
+			_eje_Z.angulo = 0;
 		}
 	}
 	
 	/*INICIALIZACIÓN EJE R*/
-	eje_R.setVelocidad(500);
-	eje_R.set_ad(0);
+	_eje_R.setVelocidad(500);
+	_eje_R.set_ad(0);
 	
 	/*INICIALIZACIÓN EJE Th*/
 }
 
 void Robosaurus::actualizar(){
 	/*CONTROL EJE Z*/
-    eje_Z.actualizar();
-	if(eje_Z.get_ad() == 0 && eje_Z.angulo > 0){
-		eje_Z.angulo = -9999;
+    _eje_Z.actualizar();
+	if(_eje_Z.get_ad() == 0 && _eje_Z.angulo > 0){
+		_eje_Z.angulo = -9999;
 	}
-	if(!digitalRead(fin_de_carrera)){
-		eje_Z.angulo = 0;
+	if(!digitalRead(_fin_de_carrera)){
+		_eje_Z.angulo = 0;
 	}
 	
 	
 	/*CONTROL EJE R*/
-    eje_R.angulo = enc.getPos_cm();
-    eje_R.actualizar();
+    _eje_R.angulo = _ENC.getPos_cm();
+    _eje_R.actualizar();
 	
 	
 	/*CONTROL EJE Th*/
-    MPU.MPU9250_read();
+    _MPU.MPU9250_read();
     //Controlador PI DIY
-    if(millis() > t_0 + 500){
+    if(millis() > _t_0 + 500){
       this->_err = (this->_MPU.read_angle_z() - this->_th_ad);
       this->_err = abs(this->_err)>5.0?this->_err:0;
       this->_Tp = this->_kp*this->_err;
@@ -90,14 +90,13 @@ void Robosaurus::actualizar(){
     //Serial.print(this->_th_ad); Serial.print(",");
     //Serial.println(this->_MPU.read_angle_z());
 
-  }
 }
 
 void Robosaurus::setR(float R){
-	this->eje_R.set_ad(R);
+	this->_eje_R.set_ad(R);
 }
 void Robosaurus::setZ(float Z){
-	this->eje_Z.set_ad(Z);
+	this->_eje_Z.set_ad(Z);
 }
 void Robosaurus::setTh(float Th){
 	this->_th_ad = Th;
@@ -113,23 +112,23 @@ void Robosaurus::setGripper(bool Open){
 
 void Robosaurus::abrirGripper(){
 	if(!this->_MPG_abierto){
-		this->MPG.abrir_gripper();
+		this->_MPG.abrir_gripper();
 		this->_MPG_abierto = true;
 	}
 }
 void Robosaurus::cerrarGripper(){
 	if(this->_MPG_abierto){
-		this->MPG.cerrar_gripper();
+		this->_MPG.cerrar_gripper();
 		this->_MPG_abierto = false;
 	}
 }
 void Robosaurus::toggleGripper(){
 	if(this->_MPG_abierto){
-		this->MPG.cerrar_gripper();
+		this->_MPG.cerrar_gripper();
 		this->_MPG_abierto = false;
 	}
 	else{
-		this->MPG.abrir_gripper();
+		this->_MPG.abrir_gripper();
 		this->_MPG_abierto = true;
 	}
 }

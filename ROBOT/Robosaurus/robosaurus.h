@@ -51,6 +51,6 @@ public:
 	void abrirGripper();
 	void cerrarGripper();
 	void toggleGripper();
-}
+};
 
 #endif

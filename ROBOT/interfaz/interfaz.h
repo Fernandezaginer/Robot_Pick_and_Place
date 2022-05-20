@@ -1,4 +1,8 @@
 
+
+#ifndef _INTERFAZ_H_
+#define _INTERFAZ_H_
+
 // Clase de comunicación con la interfaz
 class COM_Interfaz {
   public:
@@ -98,3 +102,4 @@ class COM_Interfaz {
 
 };
 
+#endif
