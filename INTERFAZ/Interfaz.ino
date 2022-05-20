@@ -37,12 +37,12 @@ Adafruit_GFX_Button on_btn, off_btn;
 #define ANGULO_MIN          0.0
 #define ANGULO_INCREMENTO   5.0
 #define ANGULO_INCREMENTOL  5.0
-#define ALTURA_MAX          20.0
+#define ALTURA_MAX          22.0
 #define ALTURA_MIN          0.0
-#define ALTURA_INCREMENTO   1.0
-#define ALTURA_INCREMENTOL  1.0
-#define RADIO_MAX           35.0
-#define RADIO_MIN           10.0
+#define ALTURA_INCREMENTO   0.5
+#define ALTURA_INCREMENTOL  0.5
+#define RADIO_MAX           37.0
+#define RADIO_MIN           12.0
 #define RADIO_INCREMENTO    1.0
 #define RADIO_INCREMENTOL    1.0
 #define X_INCREMENTO  0.5
@@ -107,12 +107,12 @@ class coordenadas {
 
 
 // DoFs
-float radio = 10.0;
+float radio = 12.0;
 float angulo = 180.0;
-float altura = 20.0;
+float altura = 0.0;
 coordenadas cord;
 enum modo_gripper {PLACE = 0, PICK = 1};
-bool gripper = PICK;
+bool gripper = PLACE;
 
 
 void tft_control_manual_print_xi(coordenadas cc);
@@ -258,7 +258,7 @@ void tft_menu() {
 
 
 
-
+/*
 #define T_MIN_REARME        10
 #define ANGULO_MAX          360.0
 #define ANGULO_MIN          0.0
@@ -268,11 +268,11 @@ void tft_menu() {
 #define ALTURA_MIN          0.0
 #define ALTURA_INCREMENTO   1.0
 #define ALTURA_INCREMENTOL  1.0
-#define RADIO_MAX           35.0
-#define RADIO_MIN           10.0
+#define RADIO_MAX           37.0
+#define RADIO_MIN           12.0
 #define RADIO_INCREMENTO    1.0
 #define RADIO_INCREMENTOL    1.0
-
+*/
 
 void modo_manual_x() {
 
@@ -334,7 +334,7 @@ void send_qi(coordenadas c) {
 
   // Altura
   paquete[10] = 'z';
-  aux = c.getZ();
+  aux = c.getZ()*100.0;
   float_to_4byte(&aux, &paquete[11]);
 
   // Gripper:
